@@ -1,10 +1,41 @@
 const header = document.querySelector('[data-header]');
 const menuToggle = document.querySelector('[data-menu-toggle]');
 const nav = document.querySelector('[data-nav]');
+const scrollProgress = document.querySelector('[data-scroll-progress]');
+const ambientScene = document.querySelector('.ambient-scene');
+const heroArt = document.querySelector('.hero-art');
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 window.addEventListener('scroll', () => {
   header.classList.toggle('is-scrolled', window.scrollY > 24);
+  const scrollable = document.documentElement.scrollHeight - window.innerHeight;
+  const progress = scrollable > 0 ? window.scrollY / scrollable : 0;
+  scrollProgress.style.transform = `scaleX(${Math.min(Math.max(progress, 0), 1)})`;
 }, { passive: true });
+
+if (!reduceMotion) {
+  let pointerFrame;
+  window.addEventListener('pointermove', (event) => {
+    if (pointerFrame) cancelAnimationFrame(pointerFrame);
+    pointerFrame = requestAnimationFrame(() => {
+      ambientScene.style.setProperty('--pointer-x', `${event.clientX}px`);
+      ambientScene.style.setProperty('--pointer-y', `${event.clientY}px`);
+    });
+  }, { passive: true });
+
+  heroArt.addEventListener('pointermove', (event) => {
+    const bounds = heroArt.getBoundingClientRect();
+    const x = (event.clientX - bounds.left) / bounds.width - 0.5;
+    const y = (event.clientY - bounds.top) / bounds.height - 0.5;
+    heroArt.style.setProperty('--tilt-x', `${(-y * 5).toFixed(2)}deg`);
+    heroArt.style.setProperty('--tilt-y', `${(x * 6).toFixed(2)}deg`);
+  });
+
+  heroArt.addEventListener('pointerleave', () => {
+    heroArt.style.setProperty('--tilt-x', '0deg');
+    heroArt.style.setProperty('--tilt-y', '0deg');
+  });
+}
 
 menuToggle.addEventListener('click', () => {
   const isOpen = menuToggle.getAttribute('aria-expanded') === 'true';
@@ -41,7 +72,10 @@ const revealObserver = new IntersectionObserver((entries, observer) => {
   });
 }, { threshold: 0.12 });
 
-document.querySelectorAll('.reveal').forEach((element) => revealObserver.observe(element));
+document.querySelectorAll('.reveal').forEach((element, index) => {
+  element.style.transitionDelay = `${Math.min(index % 4, 3) * 70}ms`;
+  revealObserver.observe(element);
+});
 
 const contactForm = document.querySelector('[data-contact-form]');
 contactForm.addEventListener('submit', (event) => {
